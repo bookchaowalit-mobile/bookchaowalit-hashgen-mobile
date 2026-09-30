@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final digests = allDigests(_text.text, hmacKey: _hmac ? _key.text : null);
     final expected = _expected.text.trim();
     final match = matchDigest(digests, expected);
+    final problem = digestFormatProblem(expected);
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Hashgen')),
@@ -102,12 +103,19 @@ class _HomeScreenState extends State<HomeScreen> {
           if (expected.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                match == null ? 'No match' : 'Matches ${match.label}',
-                key: const Key('match-result'),
-                style: TextStyle(
-                  color: match == null ? colors.error : colors.primary,
-                  fontWeight: FontWeight.bold,
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  match != null
+                      ? 'Matches ${_hmac ? 'HMAC-' : ''}${match.label}'
+                      : problem == null
+                          ? 'No match'
+                          : 'No match: $problem',
+                  key: const Key('match-result'),
+                  style: TextStyle(
+                    color: match == null ? colors.error : colors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

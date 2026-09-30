@@ -42,9 +42,42 @@ Map<HashAlgorithm, String> allDigests(String text, {String? hmacKey}) => {
         a: digestHex(a, text, hmacKey: hmacKey),
     };
 
-/// Normalises a pasted digest (trims, drops spaces/colons, lower-cases).
-String normaliseDigest(String input) =>
-    input.replaceAll(RegExp(r'[\s:]'), '').toLowerCase();
+/// Hex lengths of the supported digests (MD5, SHA-1, SHA-256, SHA-512).
+const digestHexLengths = {32, 40, 64, 128};
+
+final _hexRun = RegExp(r'(?<![0-9a-fA-F])[0-9a-fA-F]{32,128}(?![0-9a-fA-F])');
+
+/// Normalises a pasted digest to lower-case hex.
+///
+/// Accepts plain hex, byte-separated hex (`90:01:50…`, `90 01 50…`) and the
+/// common tool formats `sha256sum` (`<hex>  file`), BSD (`SHA256 (file) =
+/// <hex>`) and `sha256:<hex>`: when exactly one hex run of a supported
+/// digest length is present, that run is the digest.
+String normaliseDigest(String input) {
+  final trimmed = input.trim();
+  final runs = _hexRun
+      .allMatches(trimmed)
+      .map((m) => m[0]!)
+      .where((h) => digestHexLengths.contains(h.length))
+      .toList();
+  if (runs.length == 1) return runs.single.toLowerCase();
+  return trimmed.replaceAll(RegExp(r'[\s:]'), '').toLowerCase();
+}
+
+/// Why [expected] cannot be any supported digest, or null when it looks
+/// like one (so the UI can say more than "No match").
+String? digestFormatProblem(String expected) {
+  final e = normaliseDigest(expected);
+  if (e.isEmpty) return null;
+  if (!RegExp(r'^[0-9a-f]+$').hasMatch(e)) {
+    return 'Not a hex digest (use 0-9 and a-f)';
+  }
+  if (!digestHexLengths.contains(e.length)) {
+    return '${e.length} hex characters; expected 32 (MD5), 40 (SHA-1), '
+        '64 (SHA-256) or 128 (SHA-512)';
+  }
+  return null;
+}
 
 /// Which algorithm's digest equals [expected], or null if none match.
 HashAlgorithm? matchDigest(
